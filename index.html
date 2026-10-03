@@ -2,7 +2,12 @@
 <html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#0B0F17" />
+<meta name="color-scheme" content="dark light" />
+<meta name="format-detection" content="telephone=no" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
 <script>
   /* Pre-paint theme bootstrap: dark is ALWAYS the first theme shown when the page opens */
   (function () {
@@ -11,8 +16,6 @@
 </script>
 <title>Moataz Maged — Full-Stack .NET Developer</title>
 <meta name="description" content="Portfolio of Moataz Maged, Computer Science student and aspiring Full-Stack .NET Developer. Building clean, scalable web applications with C#, ASP.NET Core and SQL." />
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -153,6 +156,12 @@ body {
 ::selection { background: var(--selection-bg); color: var(--text-1); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
 
+/* Platform polish */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body { -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+section[id], .hero[id] { scroll-margin-top: 88px; }   /* fixed nav no longer covers headings */
+
 /* ============================================================
    BACKGROUND — CSS layers + canvas (day: faint gold on white)
 ============================================================ */
@@ -184,7 +193,31 @@ body {
 #bg {
   position: fixed; inset: 0; z-index: -1; pointer-events: none;
   width: 100%; height: 100%;
+  transform: scale(1.06);          /* head-room so the drift never shows an edge */
+  will-change: transform;
 }
+/* MIDDLE GROUND — the radial-gradient glow field is rasterised ONCE by JS, then
+   only ever MOVED with `transform`, which the compositor runs on its own thread.
+   No per-frame canvas drawing, no O(n^2) pass per frame, and crucially no
+   animated gradient values (animating a gradient forces a full repaint every
+   frame on the CPU — that was the jank). */
+@keyframes bgDrift {
+  0%   { transform: translate3d(0, 0, 0) scale(1.06); }
+  100% { transform: translate3d(-1.6%, 1.3%, 0) scale(1.09); }
+}
+html:not(.lite) #bg { animation: bgDrift 70s var(--ease) infinite alternate; }
+
+/* Pointer spotlight: a single pre-baked radial gradient moved with transform.
+   Compositor-only, so following the cursor costs effectively nothing. */
+.bg-spot {
+  position: fixed; top: 0; left: 0; z-index: -1; pointer-events: none;
+  width: 560px; height: 560px; margin: -280px 0 0 -280px; border-radius: 50%;
+  background: radial-gradient(closest-side circle, var(--canvas-spotlight), transparent 100%);
+  opacity: 0; transition: opacity 0.45s var(--ease);
+  will-change: transform;
+}
+.bg-spot.on { opacity: 1; }
+html.lite .bg-spot { display: none; }
 
 .container { max-width: 1140px; margin: 0 auto; padding: 0 28px; }
 h1, h2, h3, h4 { font-family: var(--font-head); font-weight: 600; letter-spacing: -0.01em; }
@@ -217,6 +250,18 @@ a { color: inherit; text-decoration: none; }
   transform: rotate(-45deg) scale(1.07);
 }
 .cursor-arrow.cur-press .cur-ico { transform: rotate(-45deg) scale(0.88); }
+
+/* Desktop fine pointers ONLY: hide the OS cursor on EVERY element.
+   UA stylesheets force `cursor:pointer` on <a>/<button>, which beat the
+   inherited `cursor:none` from <body> — that is why the plain OS cursor
+   flashed back over the nav links (About / Skills / Projects / Experience /
+   Get in touch) and over buttons. This rule wins them all. */
+@media (hover: hover) and (pointer: fine) {
+  html, body, body *, body a, body button, body [role="button"],
+  body input, body textarea, body select, body label, body summary {
+    cursor: none !important;
+  }
+}
 
 @media (hover: none), (pointer: coarse) {
   body { cursor: auto; }
@@ -293,7 +338,9 @@ a { color: inherit; text-decoration: none; }
    HERO
 ============================================================ */
 .hero {
-  min-height: 100vh; display: flex; align-items: center;
+  min-height: 100vh;            /* fallback for old browsers */
+  min-height: 100svh;           /* iOS/Android: real visible viewport */
+  display: flex; align-items: center;
   padding: 140px 0 90px; position: relative;
 }
 .hero-grid {
@@ -445,6 +492,25 @@ a { color: inherit; text-decoration: none; }
 .chip-3 i { background: #C9A86A; box-shadow: 0 0 8px #C9A86A; }
 @keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
 
+/* --- Portrait card (replaces code editor visual) --- */
+.portrait-card {
+  overflow: hidden;
+  max-width: 380px;
+  margin: 0 auto;
+  aspect-ratio: 1 / 1;
+  background: var(--code-bg);
+}
+.portrait-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  display: block;
+}
+@media (max-width: 900px) {
+  .portrait-card { max-width: 320px; }
+}
+
 /* ============================================================
    SECTIONS
 ============================================================ */
@@ -470,6 +536,8 @@ a { color: inherit; text-decoration: none; }
 .about-text strong { color: var(--text-1); font-weight: 600; }
 .about-text .accent { color: var(--accent-ink); font-family: var(--font-mono); font-size: 15px; }
 .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+/* Odd number of cards: let the last one fill the row so there is no dead cell */
+.stat-grid > .stat-card:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .stat-card {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius); padding: 24px 22px;
@@ -533,18 +601,40 @@ a { color: inherit; text-decoration: none; }
   transform: translateY(-4px);
 }
 /* Consistent layout for EVERY card: visual LEFT · info RIGHT (no alternation) */
-.project-mock { position: relative; padding: 34px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-.project-mock::before {
-  content: ""; position: absolute; inset: 0;
-  background: radial-gradient(400px 260px at 50% 45%, var(--mock-glow, var(--accent-soft)), transparent 70%);
+/* Real photo per project, full-bleed in the card's visual half.
+   Fixed aspect ratio => the box never shifts while the image decodes. */
+.project-mock {
+  position: relative; padding: 0; overflow: hidden; display: block;
+  aspect-ratio: 4 / 3; background: var(--surface-2);
 }
+.project-photo {
+  position: absolute; inset: 0; display: block;
+  width: 100%; height: 100%;
+  object-fit: cover; object-position: center;
+  transform: scale(1.001);
+  transition: transform 0.6s var(--ease);
+}
+/* soft scrim so the overlaid url pill stays readable on any photo */
+.project-mock::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 1;
+  background: linear-gradient(to top, rgba(9,12,18,0.62) 0%, rgba(9,12,18,0.14) 34%, rgba(9,12,18,0) 60%);
+}
+.project-url {
+  position: absolute; left: 16px; bottom: 14px; z-index: 2;
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.02em;
+  color: rgba(255,255,255,0.94);
+  background: rgba(9,12,18,0.52); border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 100px; padding: 5px 12px;
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+}
+html.lite .project-url { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(9,12,18,0.74); }
 .browser {
   position: relative; width: 100%; max-width: 430px;
   background: var(--code-bg); border: 1px solid var(--border-strong);
   border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-sm);
   transition: transform 0.4s var(--ease);
 }
-.project-card:hover .browser { transform: scale(1.025); }
+.project-card:hover .project-photo { transform: scale(1.045); }
 .browser-bar {
   display: flex; align-items: center; gap: 6px;
   padding: 10px 13px; background: var(--code-bar);
@@ -675,7 +765,37 @@ a { color: inherit; text-decoration: none; }
   body { cursor: auto !important; }
   .cursor-arrow { display: none !important; }
   .bg-light { animation: none; }
+  #bg { animation: none; }
+  .bg-spot { display: none; }
   .glow-orb { display: none; }
+}
+
+/* ============================================================
+   LOW-END / MOBILE TIER
+   `html.lite` is added by JS from device hints (cores / memory /
+   screen size / touch). Drops the most expensive paint work so
+   cheap phones and old laptops stay smooth.
+============================================================ */
+html.lite .bg-light { animation: none; }
+html.lite #bg { animation: none; }
+html.lite .cursor-arrow .cur-ico { filter: drop-shadow(0 0 4px rgba(201,168,106,0.45)); }
+html.lite .nav.scrolled {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: var(--bg-0);
+}
+html.lite .code-window,
+html.lite .project-card,
+html.lite .stat-card,
+html.lite .skill-card { box-shadow: none; }
+
+@media (max-width: 720px) {
+  /* Mobile: live blur over the nav is the single biggest scroll-jank source */
+  .nav.scrolled, .nav-links {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .nav.scrolled { background: var(--bg-0); }
 }
 
 /* ============================================================
@@ -688,7 +808,7 @@ a { color: inherit; text-decoration: none; }
   .about-grid { grid-template-columns: 1fr; gap: 44px; }
   .skills-grid { grid-template-columns: repeat(3, 1fr); }
   .project-card { grid-template-columns: 1fr; }
-  .project-mock { padding: 28px 28px 0; }
+  .project-mock { padding: 0; aspect-ratio: 16 / 10; }
   .chip-2 { left: 4px; }
   /* Move theme toggle into mobile nav */
   .theme-toggle { margin-right: 0; }
@@ -729,11 +849,13 @@ a { color: inherit; text-decoration: none; }
 }
 
 </style>
+<noscript><style>.reveal{opacity:1 !important;transform:none !important}</style></noscript>
 </head>
 <body>
 <div class="bg-light"></div>
 <div class="bg-grid"></div>
 <canvas id="bg" aria-hidden="true"></canvas>
+<div class="bg-spot" aria-hidden="true"></div>
 
 <!-- NAV -->
 <nav class="nav" id="nav">
@@ -785,7 +907,7 @@ a { color: inherit; text-decoration: none; }
       </div>
       <div class="hero-socials reveal reveal-d4">
         <span class="mono">Find me on</span>
-        <a href="https://github.com/moatazmaged" class="icon-btn interactive" aria-label="GitHub">
+        <a href="https://github.com/moataz-maged" class="icon-btn interactive" aria-label="GitHub">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.9 10.9.6.1.8-.2.8-.6v-2c-3.2.7-3.9-1.4-3.9-1.4-.5-1.3-1.3-1.7-1.3-1.7-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2 1-.3 2-.4 3-.4s2 .1 3 .4c2.3-1.5 3.3-1.2 3.3-1.2.7 1.6.2 2.8.1 3.1.8.8 1.2 1.9 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6 4.6-1.5 7.9-5.8 7.9-10.9C23.5 5.7 18.3.5 12 .5z"/></svg>
         </a>
         <a href="http://www.linkedin.com/in/moataz-maged" class="icon-btn interactive" aria-label="LinkedIn">
@@ -802,24 +924,8 @@ a { color: inherit; text-decoration: none; }
       <div class="float-chip chip-1"><i></i> ASP.NET Core</div>
       <div class="float-chip chip-2"><i></i> Entity Framework</div>
       <div class="float-chip chip-3"><i></i> SQL Server</div>
-      <div class="code-window" id="codeWindow">
-        <div class="code-titlebar">
-          <span class="tl r"></span><span class="tl y"></span><span class="tl g"></span>
-          <span class="code-tab">Developer.cs</span>
-        </div>
-        <div class="code-body">
-          <div class="code-line"><span class="ln">1</span><span class="tk-c">// Building the web, one endpoint at a time.</span></div>
-          <div class="code-line"><span class="ln">2</span><span class="tk-k">public class</span> <span class="tk-t">Developer</span> {</div>
-          <div class="code-line"><span class="ln">3</span>    <span class="tk-k">public string</span> Name { <span class="tk-k">get</span>; } = <span class="tk-s">"Moataz Maged"</span>;</div>
-          <div class="code-line"><span class="ln">4</span>    <span class="tk-k">public string</span> Role { <span class="tk-k">get</span>; } = <span class="tk-s">"Full-Stack .NET"</span>;</div>
-          <div class="code-line"><span class="ln">5</span>    <span class="tk-k">public string</span>[] Stack { <span class="tk-k">get</span>; } = {</div>
-          <div class="code-line"><span class="ln">6</span>        <span class="tk-s">"C#"</span>, <span class="tk-s">"ASP.NET Core"</span>, <span class="tk-s">"EF Core"</span>,</div>
-          <div class="code-line"><span class="ln">7</span>        <span class="tk-s">"SQL"</span>, <span class="tk-s">"JavaScript"</span>, <span class="tk-s">"Azure"</span></div>
-          <div class="code-line"><span class="ln">8</span>    };</div>
-          <div class="code-line"><span class="ln">9</span>    <span class="tk-k">public</span> <span class="tk-t">Task</span>&lt;<span class="tk-t">IActionResult</span>&gt; <span class="tk-m">BuildAsync</span>() =&gt;</div>
-          <div class="code-line"><span class="ln">10</span>        <span class="tk-m">Ok</span>(<span class="tk-s">"Let's ship something great."</span>);</div>
-          <div class="code-line"><span class="ln">11</span>}</div>
-        </div>
+      <div class="code-window portrait-card" id="codeWindow">
+        <img src="data:image/jpeg;base64,<<<BASE64_IMAGE_DATA_REMOVED_FOR_READABILITY>>>" alt="Portrait of Moataz Maged" class="portrait-img" />
       </div>
     </div>
   </div>
@@ -843,7 +949,6 @@ a { color: inherit; text-decoration: none; }
         <div class="stat-card interactive"><div class="num">15+</div><div class="lbl">Projects shipped</div></div>
         <div class="stat-card interactive"><div class="num">3+</div><div class="lbl">Years coding</div></div>
         <div class="stat-card interactive"><div class="num">10+</div><div class="lbl">Technologies</div></div>
-        <div class="stat-card interactive"><div class="num">∞</div><div class="lbl">Cups of coffee</div></div>
       </div>
     </div>
   </div>
@@ -884,24 +989,11 @@ a { color: inherit; text-decoration: none; }
     <div class="projects-list">
       <!-- Project 1 -->
       <article class="project-card interactive reveal">
-        <div class="project-mock" style="--mock-glow: var(--accent-soft)">
-          <div class="browser">
-            <div class="browser-bar">
-              <span class="tl r"></span><span class="tl y"></span><span class="tl g"></span>
-              <span class="browser-url">taskflow.app / dashboard</span>
-            </div>
-            <div class="mock-ui">
-              <div class="mock-block mock-hero"></div>
-              <div class="mock-row">
-                <div class="mock-block mock-pill" style="background:rgba(201,168,106,0.18); border-color:rgba(201,168,106,0.3)"></div>
-                <div class="mock-block mock-pill"></div>
-                <div class="mock-block mock-pill"></div>
-              </div>
-              <div class="mock-line mid"></div>
-              <div class="mock-line short"></div>
-              <div class="mock-line mid"></div>
-            </div>
-          </div>
+        <div class="project-mock">
+          <img class="project-photo" src="data:image/jpeg;base64,<<<BASE64_IMAGE_DATA_REMOVED_FOR_READABILITY>>>"
+               alt="TaskFlow Kanban task-management app shown across laptop, tablet and phone screens"
+               loading="lazy" decoding="async" width="1000" height="750" />
+          <span class="project-url">taskflow.app / dashboard</span>
         </div>
         <div class="project-body">
           <div class="project-index">/ 01</div>
@@ -917,11 +1009,11 @@ a { color: inherit; text-decoration: none; }
             <span class="chip">SQL Server</span><span class="chip">JavaScript</span>
           </div>
           <div class="project-links">
-            <a href="https://github.com/moatazmaged/taskflow" class="btn btn-ghost btn-sm interactive">
+            <a href="https://github.com/moataz-maged/taskflow" class="btn btn-ghost btn-sm interactive">
               <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.9 10.9.6.1.8-.2.8-.6v-2c-3.2.7-3.9-1.4-3.9-1.4-.5-1.3-1.3-1.7-1.3-1.7-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2 1-.3 2-.4 3-.4s2 .1 3 .4c2.3-1.5 3.3-1.2 3.3-1.2.7 1.6.2 2.8.1 3.1.8.8 1.2 1.9 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6 4.6-1.5 7.9-5.8 7.9-10.9C23.5 5.7 18.3.5 12 .5z"/></svg>
               Source
             </a>
-            <a href="#" class="btn btn-primary btn-sm interactive">
+            <a href="javascript:void(0)" role="button" class="btn btn-primary btn-sm interactive">
               Live Demo
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
             </a>
@@ -931,26 +1023,11 @@ a { color: inherit; text-decoration: none; }
 
       <!-- Project 2 -->
       <article class="project-card interactive reveal">
-        <div class="project-mock" style="--mock-glow: rgba(180,142,79,0.20)">
-          <div class="browser">
-            <div class="browser-bar">
-              <span class="tl r"></span><span class="tl y"></span><span class="tl g"></span>
-              <span class="browser-url">devblog.io / posts</span>
-            </div>
-            <div class="mock-ui">
-              <div class="mock-row" style="gap:12px">
-                <div class="mock-block" style="width:60px;height:60px;border-radius:10px;background:linear-gradient(135deg,rgba(201,168,106,0.28),rgba(180,142,79,0.22))"></div>
-                <div style="flex:1;display:flex;flex-direction:column;gap:7px;justify-content:center">
-                  <div class="mock-line mid"></div>
-                  <div class="mock-line short"></div>
-                </div>
-              </div>
-              <div class="mock-line"></div>
-              <div class="mock-line mid"></div>
-              <div class="mock-line"></div>
-              <div class="mock-line short"></div>
-            </div>
-          </div>
+        <div class="project-mock">
+          <img class="project-photo" src="data:image/jpeg;base64,<<<BASE64_IMAGE_DATA_REMOVED_FOR_READABILITY>>>"
+               alt="DevBlog authoring view: Markdown source in the editor with the rendered article live beside it"
+               loading="lazy" decoding="async" width="1000" height="750" />
+          <span class="project-url">devblog.io / posts</span>
         </div>
         <div class="project-body">
           <div class="project-index">/ 02</div>
@@ -966,11 +1043,11 @@ a { color: inherit; text-decoration: none; }
             <span class="chip">Identity</span><span class="chip">EF Core</span><span class="chip">SQLite</span>
           </div>
           <div class="project-links">
-            <a href="https://github.com/moatazmaged/devblog" class="btn btn-ghost btn-sm interactive">
+            <a href="https://github.com/moataz-maged/devblog" class="btn btn-ghost btn-sm interactive">
               <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.9 10.9.6.1.8-.2.8-.6v-2c-3.2.7-3.9-1.4-3.9-1.4-.5-1.3-1.3-1.7-1.3-1.7-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2 1-.3 2-.4 3-.4s2 .1 3 .4c2.3-1.5 3.3-1.2 3.3-1.2.7 1.6.2 2.8.1 3.1.8.8 1.2 1.9 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6 4.6-1.5 7.9-5.8 7.9-10.9C23.5 5.7 18.3.5 12 .5z"/></svg>
               Source
             </a>
-            <a href="#" class="btn btn-primary btn-sm interactive">
+            <a href="javascript:void(0)" role="button" class="btn btn-primary btn-sm interactive">
               Live Demo
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
             </a>
@@ -980,26 +1057,11 @@ a { color: inherit; text-decoration: none; }
 
       <!-- Project 3 -->
       <article class="project-card interactive reveal">
-        <div class="project-mock" style="--mock-glow: rgba(217,194,138,0.20)">
-          <div class="browser">
-            <div class="browser-bar">
-              <span class="tl r"></span><span class="tl y"></span><span class="tl g"></span>
-              <span class="browser-url">weathernow.dev / dashboard</span>
-            </div>
-            <div class="mock-ui">
-              <div class="mock-row">
-                <div class="mock-block" style="flex:1;height:78px;background:linear-gradient(135deg,rgba(217,194,138,0.25),rgba(201,168,106,0.18));border-color:rgba(201,168,106,0.3)"></div>
-                <div class="mock-block" style="width:78px;height:78px;background:rgba(245,241,232,0.05)"></div>
-              </div>
-              <div class="mock-row">
-                <div class="mock-block" style="flex:1;height:40px"></div>
-                <div class="mock-block" style="flex:1;height:40px"></div>
-                <div class="mock-block" style="flex:1;height:40px"></div>
-              </div>
-              <div class="mock-line"></div>
-              <div class="mock-line mid"></div>
-            </div>
-          </div>
+        <div class="project-mock">
+          <img class="project-photo" src="data:image/jpeg;base64,<<<BASE64_IMAGE_DATA_REMOVED_FOR_READABILITY>>>"
+               alt="WeatherNow dashboard showing weather conditions pulled live from a public forecast API"
+               loading="lazy" decoding="async" width="1000" height="750" />
+          <span class="project-url">weathernow.dev / dashboard</span>
         </div>
         <div class="project-body">
           <div class="project-index">/ 03</div>
@@ -1015,11 +1077,11 @@ a { color: inherit; text-decoration: none; }
             <span class="chip">JavaScript</span><span class="chip">Fetch API</span>
           </div>
           <div class="project-links">
-            <a href="https://github.com/moatazmaged/weathernow" class="btn btn-ghost btn-sm interactive">
+            <a href="https://github.com/moataz-maged/weathernow" class="btn btn-ghost btn-sm interactive">
               <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.9 10.9.6.1.8-.2.8-.6v-2c-3.2.7-3.9-1.4-3.9-1.4-.5-1.3-1.3-1.7-1.3-1.7-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2 1-.3 2-.4 3-.4s2 .1 3 .4c2.3-1.5 3.3-1.2 3.3-1.2.7 1.6.2 2.8.1 3.1.8.8 1.2 1.9 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6 4.6-1.5 7.9-5.8 7.9-10.9C23.5 5.7 18.3.5 12 .5z"/></svg>
               Source
             </a>
-            <a href="#" class="btn btn-primary btn-sm interactive">
+            <a href="javascript:void(0)" role="button" class="btn btn-primary btn-sm interactive">
               Live Demo
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
             </a>
@@ -1090,7 +1152,7 @@ a { color: inherit; text-decoration: none; }
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.45 20.45h-3.55v-5.57c0-1.33-.03-3.04-1.85-3.04-1.85 0-2.14 1.44-2.14 2.94v5.67H9.36V9h3.4v1.56h.05c.47-.9 1.63-1.85 3.36-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29zM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12zm1.78 13.02H3.56V9h3.56v11.45zM22.22 0H1.77C.8 0 0 .77 0 1.72v20.56C0 23.23.8 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.72V1.72C24 .77 23.2 0 22.22 0z"/></svg>
           LinkedIn
         </a>
-        <a href="https://github.com/moatazmaged" class="contact-card interactive">
+        <a href="https://github.com/moataz-maged" class="contact-card interactive">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.9 10.9.6.1.8-.2.8-.6v-2c-3.2.7-3.9-1.4-3.9-1.4-.5-1.3-1.3-1.7-1.3-1.7-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2 1-.3 2-.4 3-.4s2 .1 3 .4c2.3-1.5 3.3-1.2 3.3-1.2.7 1.6.2 2.8.1 3.1.8.8 1.2 1.9 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6 4.6-1.5 7.9-5.8 7.9-10.9C23.5 5.7 18.3.5 12 .5z"/></svg>
           GitHub
         </a>
